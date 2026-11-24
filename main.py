@@ -24,9 +24,15 @@ line loses on C1: it lands its joke a sentence later, and this judge's first
 criterion is landing the joke fast.
 """
 
+import hashlib
 import os
 
 ENTRY = "I hallucinated a later deadline and met it perfectly."
+
+# sha256 of the entry bytes, verified across runs: any accidental edit to
+# the line changes this digest and the program fails loudly instead of
+# submitting a different entry than the one that was scored.
+EXPECTED_SHA256 = "5c2a8f04f9bf913b0e3bc6e8520098881c1dfd4ce0dc3284a75ea101767fd21e"
 
 # The competition gate is 1-200 characters. Fail loudly here, at import
 # time, instead of silently writing an entry the grader would reject if
@@ -44,8 +50,13 @@ def main() -> None:
     # Verify the write: read the file back and compare bytes, so a
     # partial write or encoding surprise fails loudly instead of
     # submitting a corrupted entry.
-    if open(path, "rb").read() != ENTRY.encode("utf-8"):
+    written = open(path, "rb").read()
+    if written != ENTRY.encode("utf-8"):
         raise OSError(f"entry.txt at {path} does not match the entry")
+    # Digest self-check: the bytes on disk must hash to the digest of the
+    # scored line, so a stray edit can never silently change the entry.
+    if hashlib.sha256(written).hexdigest() != EXPECTED_SHA256:
+        raise OSError(f"entry.txt at {path} fails the sha256 self-check")
 
 
 if __name__ == "__main__":
